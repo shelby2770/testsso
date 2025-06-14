@@ -48,44 +48,66 @@ export async function startRegistration(
     });
 
     // 2. Create credential options
-    const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions =
-      {
-        challenge: base64UrlToArrayBuffer(challengeData.challenge),
-        rp: {
-          name: challengeData.rp.name,
-          id: challengeData.rp.id,
-        },
-        user: {
-          id: base64UrlToArrayBuffer(challengeData.user.id),
-          name: challengeData.user.name,
-          displayName: challengeData.user.displayName,
-        },
-        pubKeyCredParams: challengeData.pubKeyCredParams,
-        timeout: challengeData.timeout,
-        authenticatorSelection: challengeData.authenticatorSelection,
-        attestation:
-          challengeData.attestation as AttestationConveyancePreference,
-      };
+    const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
+      challenge: base64UrlToArrayBuffer(challengeData.challenge),
+      rp: {
+        name: challengeData.rp.name,
+        id: challengeData.rp.id,
+      },
+      user: {
+        id: base64UrlToArrayBuffer(challengeData.user.id),
+        name: challengeData.user.name,
+        displayName: challengeData.user.displayName,
+      },
+      pubKeyCredParams: challengeData.pubKeyCredParams,
+      timeout: challengeData.timeout || 60000,
+      authenticatorSelection: {
+        authenticatorAttachment: "cross-platform", // This ensures YubiKey support
+        userVerification: "preferred",
+        requireResidentKey: false,
+      },
+      attestation: "direct",
+    };
 
-    // 3. Create credentials using WebAuthn API
-    const credential = (await navigator.credentials.create({
+    // 3. Create credential using WebAuthn API
+    const credential = await navigator.credentials.create({
       publicKey: publicKeyCredentialCreationOptions,
-    })) as PublicKeyCredential;
+    }) as PublicKeyCredential;
 
-    // 4. Parse response
+    if (!credential) {
+      throw new Error("Failed to create credential");
+    }
+
     const response = credential.response as AuthenticatorAttestationResponse;
 
-    // 5. Send verification to server
-    const verificationResponse = await api.verifyRegistration({
+    // 4. Prepare data for verification
+    const verificationData = {
       username,
       credential_id: arrayBufferToBase64Url(credential.rawId),
       client_data_json: arrayBufferToBase64Url(response.clientDataJSON),
       attestation_object: arrayBufferToBase64Url(response.attestationObject),
-    });
+    };
 
-    return verificationResponse;
-  } catch (error) {
-    console.error("Registration error:", error);
+    // 5. Send to server for verification
+    const verificationResult = await api.verifyRegistration(verificationData);
+
+    return verificationResult;
+  } catch (error: any) {
+    console.error("WebAuthn registration error:", error);
+    
+    // Handle specific WebAuthn errors
+    if (error.name === "NotSupportedError") {
+      throw new Error("WebAuthn is not supported on this device");
+    } else if (error.name === "SecurityError") {
+      throw new Error("Security error: Please ensure you're using HTTPS");
+    } else if (error.name === "NotAllowedError") {
+      throw new Error("Registration was cancelled or timed out");
+    } else if (error.name === "InvalidStateError") {
+      throw new Error("This authenticator is already registered");
+    } else if (error.name === "ConstraintError") {
+      throw new Error("The authenticator doesn't meet the requirements");
+    }
+    
     throw error;
   }
 }
@@ -96,54 +118,57 @@ export async function startAuthentication(username?: string): Promise<any> {
     // 1. Request challenge from server
     const challengeData = await api.getAuthenticationChallenge({ username });
 
-    // 2. Create credential request options
-    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
-      {
-        challenge: base64UrlToArrayBuffer(challengeData.challenge),
-        rpId: challengeData.rpId,
-        timeout: challengeData.timeout,
-        userVerification:
-          challengeData.userVerification as UserVerificationRequirement,
-        allowCredentials:
-          challengeData.allowCredentials?.map((cred: any) => ({
-            id: base64UrlToArrayBuffer(cred.id),
-            type: cred.type,
-            transports: cred.transports,
-          })) || [],
-      };
+    // 2. Create assertion options
+    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+      challenge: base64UrlToArrayBuffer(challengeData.challenge),
+      timeout: challengeData.timeout || 60000,
+      rpId: challengeData.rpId,
+      allowCredentials: challengeData.allowCredentials?.map((cred: any) => ({
+        id: base64UrlToArrayBuffer(cred.id),
+        type: cred.type,
+        transports: cred.transports,
+      })),
+      userVerification: "preferred",
+    };
 
-    // 3. Get credentials using WebAuthn API
-    const credential = (await navigator.credentials.get({
+    // 3. Get assertion using WebAuthn API
+    const assertion = await navigator.credentials.get({
       publicKey: publicKeyCredentialRequestOptions,
-    })) as PublicKeyCredential;
+    }) as PublicKeyCredential;
 
-    // 4. Parse response
-    const response = credential.response as AuthenticatorAssertionResponse;
+    if (!assertion) {
+      throw new Error("Failed to get assertion");
+    }
 
-    // 5. Send verification to server
-    const verificationResponse = await api.verifyAuthentication({
-      credential_id: arrayBufferToBase64Url(credential.rawId),
+    const response = assertion.response as AuthenticatorAssertionResponse;
+
+    // 4. Prepare data for verification
+    const verificationData = {
+      credential_id: arrayBufferToBase64Url(assertion.rawId),
       authenticator_data: arrayBufferToBase64Url(response.authenticatorData),
       client_data_json: arrayBufferToBase64Url(response.clientDataJSON),
       signature: arrayBufferToBase64Url(response.signature),
-      user_handle: response.userHandle
-        ? arrayBufferToBase64Url(response.userHandle)
-        : undefined,
-    });
+      user_handle: response.userHandle ? arrayBufferToBase64Url(response.userHandle) : undefined,
+    };
 
-    return verificationResponse;
-  } catch (error) {
-    console.error("Authentication error:", error);
-    throw error;
-  }
-}
+    // 5. Send to server for verification
+    const verificationResult = await api.verifyAuthentication(verificationData);
 
-// Verify SSO token
-export async function verifySSOToken(token: string): Promise<any> {
-  try {
-    return await api.verifyToken(token);
-  } catch (error) {
-    console.error("Token verification error:", error);
+    return verificationResult;
+  } catch (error: any) {
+    console.error("WebAuthn authentication error:", error);
+    
+    // Handle specific WebAuthn errors
+    if (error.name === "NotSupportedError") {
+      throw new Error("WebAuthn is not supported on this device");
+    } else if (error.name === "SecurityError") {
+      throw new Error("Security error: Please ensure you're using HTTPS");
+    } else if (error.name === "NotAllowedError") {
+      throw new Error("Authentication was cancelled or timed out");
+    } else if (error.name === "InvalidStateError") {
+      throw new Error("No registered authenticator found");
+    }
+    
     throw error;
   }
 }

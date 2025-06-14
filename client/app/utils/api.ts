@@ -1,5 +1,5 @@
 // API configuration
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = "https://testsso.asiradnan.com/api/auth";
 
 // API endpoints
 const ENDPOINTS = {
@@ -36,16 +36,21 @@ async function apiRequest<T>(
     config.body = JSON.stringify(data);
   }
 
-  const response = await fetch(url, config);
+  try {
+    const response = await fetch(url, config);
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `API request failed with status ${response.status}`
-    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || errorData.detail || `API request failed with status ${response.status}`
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error(`API request failed for ${url}:`, error);
+    throw error;
   }
-
-  return response.json();
 }
 
 // API service
@@ -81,7 +86,7 @@ export const api = {
   verifyToken: (token: string) =>
     apiRequest(ENDPOINTS.VERIFY_TOKEN, "POST", { token }),
 
-  // User Profile
+  // User profile
   getUserProfile: (token: string) =>
     apiRequest(ENDPOINTS.USER_PROFILE, "GET", undefined, token),
 };
