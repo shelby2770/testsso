@@ -9,6 +9,7 @@ const ENDPOINTS = {
   LOGIN_VERIFY: `${API_BASE_URL}/login/verify/`,
   VERIFY_TOKEN: `${API_BASE_URL}/verify-token/`,
   USER_PROFILE: `${API_BASE_URL}/profile/`,
+  CLEAR_CHALLENGES: `${API_BASE_URL}/clear-challenges/`,
 };
 
 // Helper for making API requests
@@ -89,4 +90,8 @@ export const api = {
   // User profile
   getUserProfile: (token: string) =>
     apiRequest(ENDPOINTS.USER_PROFILE, "GET", undefined, token),
+
+  // Clear challenges
+  clearChallenges: (data: { username: string }) =>
+    apiRequest(ENDPOINTS.CLEAR_CHALLENGES, "POST", data),
 };

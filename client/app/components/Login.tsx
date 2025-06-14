@@ -9,6 +9,26 @@ export default function Login() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [animateButton, setAnimateButton] = React.useState(false);
+  const [showRetryOption, setShowRetryOption] = React.useState(false);
+
+  const handleClearAndRetry = async () => {
+    setShowRetryOption(false);
+    setError(null);
+    
+    try {
+      // Clear authentication challenges endpoint
+      await fetch('https://testsso.asiradnan.com/api/auth/clear-auth-challenges/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim() }),
+        credentials: 'include'
+      });
+      
+      setError("Authentication challenges cleared. You can now try logging in again.");
+    } catch (err) {
+      setError("Failed to clear challenges. Please contact support.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,16 +42,29 @@ export default function Login() {
         throw new Error("WebAuthn is not supported in this browser");
       }
 
-      const response = await startAuthentication(username);
+      const response = await startAuthentication(username.trim() || undefined);
 
-      if (response.authenticated) {
+      // Check for successful authentication (handle both field names)
+      if (response.authenticated || response.verified || response.success) {
+        console.log("✅ Authentication successful, logging in user");
         login(response.sso_token);
       } else {
-        setError("Authentication failed");
+        throw new Error("Authentication failed - no success indicator");
       }
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
-      console.error("Authentication error:", err);
+      console.error("❌ Authentication error:", err);
+      
+      // Handle specific error cases
+      if (err.message && err.message.includes("Multiple authentication attempts")) {
+        setError("Multiple authentication attempts detected. This usually happens when previous attempts weren't completed properly.");
+        setShowRetryOption(true);
+      } else if (err.message && err.message.includes("Challenge not found")) {
+        setError("Authentication session expired. Please try again.");
+      } else if (err.message && err.message.includes("Credential not found")) {
+        setError("No registered security key found. Please register first.");
+      } else {
+        setError(err.message || "Authentication failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => setAnimateButton(false), 500);
@@ -84,6 +117,53 @@ export default function Login() {
         </div>
       )}
 
+      {showRetryOption && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md">
+          <div className="flex justify-between items-center">
+            <p className="text-sm">Clear previous authentication attempts and try again?</p>
+            <button
+              onClick={handleClearAndRetry}
+              className="ml-4 px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition-colors"
+            >
+              Clear & Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-md">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg
+                className="animate-spin h-5 w-5 text-blue-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="font-medium">Please touch your security key</p>
+              <p className="text-sm">Touch the gold contact when your security key blinks</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label
@@ -115,6 +195,7 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Leave empty for passkey login"
+              disabled={isLoading}
             />
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">

@@ -2,6 +2,7 @@ import * as React from "react";
 import { startRegistration } from "../utils/webauthn";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router";
+import { api } from "../utils/api";
 
 export default function Registration() {
   const { login } = useAuth();
@@ -14,6 +15,64 @@ export default function Registration() {
   const [success, setSuccess] = React.useState<string | null>(null);
   const [animateButton, setAnimateButton] = React.useState(false);
   const [step, setStep] = React.useState<"form" | "yubikey">("form");
+  const [showRetryOption, setShowRetryOption] = React.useState(false);
+
+  const handleClearAndRetry = async () => {
+  console.log("=== CLEAR AND RETRY STARTED ===");
+  console.log("Username being sent:", username.trim());
+  console.log("Request payload:", { username: username.trim() });
+  
+  setShowRetryOption(false);
+  setError(null);
+  setIsLoading(true);
+  
+  try {
+    console.log("Making API call to clear challenges...");
+    console.log("API endpoint:", "https://testsso.asiradnan.com/api/auth/clear-challenges/");
+    
+    // Use the API to clear challenges
+    const response = await api.clearChallenges({ username: username.trim() });
+    
+    console.log("=== CLEAR CHALLENGES RESPONSE ===");
+    console.log("Response received:", response);
+    console.log("Response type:", typeof response);
+    console.log("Response keys:", Object.keys(response));
+    
+    if (response.success) {
+      console.log("✅ Clear challenges successful");
+      console.log("Deleted count:", response.deleted_count);
+      console.log("Message:", response.message);
+      
+      setSuccess("Challenges cleared. You can now try registering again.");
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } else {
+      console.log("❌ Clear challenges failed - success was false");
+      setError("Failed to clear challenges. Please try again.");
+    }
+    
+  } catch (err: any) {
+    console.log("=== CLEAR CHALLENGES ERROR ===");
+    console.log("Error caught:", err);
+    console.log("Error name:", err.name);
+    console.log("Error message:", err.message);
+    console.log("Error stack:", err.stack);
+    
+    if (err.response) {
+      console.log("Error response:", err.response);
+      console.log("Error response status:", err.response.status);
+      console.log("Error response data:", err.response.data);
+    }
+    
+    setError(`Failed to clear challenges: ${err.message}`);
+    console.error("Clear challenges error:", err);
+  } finally {
+    console.log("=== CLEAR AND RETRY FINISHED ===");
+    setIsLoading(false);
+  }
+};
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +87,7 @@ export default function Registration() {
     setSuccess(null);
     setAnimateButton(true);
     setStep("yubikey");
+    setShowRetryOption(false);
 
     try {
       // Check if browser supports WebAuthn
@@ -58,7 +118,24 @@ export default function Registration() {
         throw new Error("Registration verification failed");
       }
     } catch (err: any) {
-      setError(err.message || "Registration failed. Please try again.");
+      if (err.message && err.message.includes("returned more than one RegistrationChallenge")) {
+        setError("Multiple registration attempts detected. This usually happens when previous attempts weren't completed properly.");
+        setShowRetryOption(true);
+      } else if (err.name === 'NotAllowedError') {
+        setError("Registration was cancelled or timed out. Please try again and touch your YubiKey when prompted.");
+      } else if (err.name === 'SecurityError') {
+        setError("Security error occurred. Please ensure you're using HTTPS and try again.");
+      } else if (err.name === 'NotSupportedError') {
+        setError("Your browser or device doesn't support this type of authentication.");
+      } else if (err.name === 'InvalidStateError') {
+        setError("This authenticator is already registered. Please try logging in instead.");
+      } else if (err.name === 'ConstraintError') {
+        setError("The authenticator doesn't meet the security requirements.");
+      } else if (err.message && err.message.includes("rawId")) {
+        setError("Authentication device error. Please ensure your YubiKey is properly connected and try again.");
+      } else {
+        setError(err.message || "Registration failed. Please try again.");
+      }
       setStep("form");
       console.error("Registration error:", err);
     } finally {
@@ -113,6 +190,23 @@ export default function Registration() {
         </div>
       )}
 
+      {showRetryOption && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md">
+          <div className="flex justify-between items-center">
+            <p className="text-sm">Clear previous registration attempts and try again?</p>
+            <button
+              onClick={handleClearAndRetry}
+              disabled={isLoading}
+              className={`ml-4 px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition-colors ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {isLoading ? "Clearing..." : "Clear & Retry"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {success && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-md animate-pulse">
           <div className="flex">
@@ -136,7 +230,7 @@ export default function Registration() {
         </div>
       )}
 
-      {step === "yubikey" && isLoading && (
+      {step === "yubikey" && isLoading && !showRetryOption && (
         <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-md">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -287,7 +381,7 @@ export default function Registration() {
             } ${isLoading ? "opacity-75 cursor-not-allowed" : ""}`}
             disabled={isLoading}
           >
-            {isLoading ? (
+            {isLoading && !showRetryOption ? (
               <>
                 <svg
                   className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
@@ -420,4 +514,3 @@ export default function Registration() {
     </div>
   );
 }
-
