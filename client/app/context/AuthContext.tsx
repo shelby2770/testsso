@@ -21,13 +21,36 @@ interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 7) => {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  // Set domain to .asiradnan.com to share across subdomains
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;domain=.asiradnan.com;secure;samesite=strict`;
+};
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.asiradnan.com;`;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [ssoToken, setSsoToken] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isClient, setIsClient] = React.useState(false);
 
-  // Ensure we're on the client side before accessing localStorage
+  // Ensure we're on the client side before accessing localStorage/cookies
   React.useEffect(() => {
     setIsClient(true);
   }, []);
@@ -35,8 +58,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!isClient) return;
 
-    // Check for token in localStorage on initial load
-    const token = localStorage.getItem("sso_token");
+    // Check for token in cookie first, then localStorage as fallback
+    let token = getCookie("sso_token");
+    if (!token) {
+      token = localStorage.getItem("sso_token");
+      // If found in localStorage, migrate to cookie
+      if (token) {
+        setCookie("sso_token", token);
+        localStorage.removeItem("sso_token");
+      }
+    }
+    
+    console.log("Token from storage:", token);
     if (token) {
       verifyToken(token);
     } else {
@@ -48,12 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       const response = await api.verifyToken(token);
+      console.log("Token verification response:", response);
       
       if (response.valid || response.success) {
         setUser(response.user);
         setSsoToken(token);
         if (isClient) {
-          localStorage.setItem("sso_token", token);
+          setCookie("sso_token", token);
         }
       } else {
         logout();
@@ -84,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (token: string) => {
     setSsoToken(token);
     if (isClient) {
-      localStorage.setItem("sso_token", token);
+      setCookie("sso_token", token);
     }
     verifyToken(token);
   };
@@ -93,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSsoToken(null);
     if (isClient) {
+      deleteCookie("sso_token");
+      // Also clear localStorage as fallback
       localStorage.removeItem("sso_token");
     }
     setIsLoading(false);
