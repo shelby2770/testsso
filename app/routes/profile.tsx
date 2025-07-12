@@ -2,7 +2,7 @@ import * as React from "react";
 import Profile from "../components/Profile";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
-import { redirect } from "react-router";
+import { Navigate } from "react-router";
 import type { Route } from "./+types/profile";
 
 export function meta({}: Route.MetaArgs) {
@@ -18,9 +18,20 @@ export function meta({}: Route.MetaArgs) {
 export default function ProfilePage() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // If not authenticated and not loading, redirect to login
-  if (!isAuthenticated && !isLoading) {
-    return redirect("/login");
+  // Show nothing while loading
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <div className="h-12 w-12 rounded-full border-4 border-t-indigo-500 animate-spin"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
   return (

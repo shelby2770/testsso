@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 
 interface LayoutProps {
@@ -7,11 +7,17 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
   };
 
   return (
@@ -57,8 +63,8 @@ export default function Layout({ children }: LayoutProps) {
               {isLoading ? (
                 <div className="h-8 w-8 rounded-full border-2 border-t-indigo-500 animate-spin"></div>
               ) : isAuthenticated ? (
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     Hello, {user?.username}
                   </span>
                   <Link
@@ -80,6 +86,25 @@ export default function Layout({ children }: LayoutProps) {
                       />
                     </svg>
                   </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-red-100 dark:bg-red-900 p-2 rounded-full text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-100 transition-colors duration-200"
+                  >
+                    <span className="sr-only">Logout</span>
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                  </button>
                 </div>
               ) : (
                 <div className="flex space-x-2 relative">
