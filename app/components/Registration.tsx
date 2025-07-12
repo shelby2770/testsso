@@ -1,11 +1,13 @@
 import * as React from "react";
 import { startRegistration } from "../utils/webauthn";
 import { useAuth } from "../context/AuthContext";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { api } from "../utils/api";
+import toast from "react-hot-toast";
 
 export default function Registration() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = React.useState("");
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
@@ -16,67 +18,71 @@ export default function Registration() {
   const [animateButton, setAnimateButton] = React.useState(false);
   const [step, setStep] = React.useState<"form" | "yubikey">("form");
   const [showRetryOption, setShowRetryOption] = React.useState(false);
+  const [verificationStatus, setVerificationStatus] = React.useState<
+    "pending" | "success" | "error"
+  >("pending");
 
   const handleClearAndRetry = async () => {
-  console.log("=== CLEAR AND RETRY STARTED ===");
-  console.log("Username being sent:", username.trim());
-  console.log("Request payload:", { username: username.trim() });
-  
-  setShowRetryOption(false);
-  setError(null);
-  setIsLoading(true);
-  
-  try {
-    console.log("Making API call to clear challenges...");
-    console.log("API endpoint:", "https://testsso.asiradnan.com/api/auth/clear-challenges/");
-    
-    // Use the API to clear challenges
-    const response = await api.clearChallenges({ username: username.trim() });
-    
-    console.log("=== CLEAR CHALLENGES RESPONSE ===");
-    console.log("Response received:", response);
-    console.log("Response type:", typeof response);
-    console.log("Response keys:", Object.keys(response));
-    
-    if (response.success) {
-      console.log("✅ Clear challenges successful");
-      console.log("Deleted count:", response.deleted_count);
-      console.log("Message:", response.message);
-      
-      setSuccess("Challenges cleared. You can now try registering again.");
-      setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-    } else {
-      console.log("❌ Clear challenges failed - success was false");
-      setError("Failed to clear challenges. Please try again.");
-    }
-    
-  } catch (err: any) {
-    console.log("=== CLEAR CHALLENGES ERROR ===");
-    console.log("Error caught:", err);
-    console.log("Error name:", err.name);
-    console.log("Error message:", err.message);
-    console.log("Error stack:", err.stack);
-    
-    if (err.response) {
-      console.log("Error response:", err.response);
-      console.log("Error response status:", err.response.status);
-      console.log("Error response data:", err.response.data);
-    }
-    
-    setError(`Failed to clear challenges: ${err.message}`);
-    console.error("Clear challenges error:", err);
-  } finally {
-    console.log("=== CLEAR AND RETRY FINISHED ===");
-    setIsLoading(false);
-  }
-};
+    console.log("=== CLEAR AND RETRY STARTED ===");
+    console.log("Username being sent:", username.trim());
+    console.log("Request payload:", { username: username.trim() });
 
+    setShowRetryOption(false);
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      console.log("Making API call to clear challenges...");
+      console.log(
+        "API endpoint:",
+        "https://testsso.asiradnan.com/api/auth/clear-challenges/"
+      );
+
+      // Use the API to clear challenges
+      const response = await api.clearChallenges({ username: username.trim() });
+
+      console.log("=== CLEAR CHALLENGES RESPONSE ===");
+      console.log("Response received:", response);
+      console.log("Response type:", typeof response);
+      console.log("Response keys:", Object.keys(response));
+
+      if (response.success) {
+        console.log("✅ Clear challenges successful");
+        console.log("Deleted count:", response.deleted_count);
+        console.log("Message:", response.message);
+
+        setSuccess("Challenges cleared. You can now try registering again.");
+        setTimeout(() => {
+          setSuccess(null);
+        }, 3000);
+      } else {
+        console.log("❌ Clear challenges failed - success was false");
+        setError("Failed to clear challenges. Please try again.");
+      }
+    } catch (err: any) {
+      console.log("=== CLEAR CHALLENGES ERROR ===");
+      console.log("Error caught:", err);
+      console.log("Error name:", err.name);
+      console.log("Error message:", err.message);
+      console.log("Error stack:", err.stack);
+
+      if (err.response) {
+        console.log("Error response:", err.response);
+        console.log("Error response status:", err.response.status);
+        console.log("Error response data:", err.response.data);
+      }
+
+      setError(`Failed to clear challenges: ${err.message}`);
+      console.error("Clear challenges error:", err);
+    } finally {
+      console.log("=== CLEAR AND RETRY FINISHED ===");
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim()) {
       setError("Username is required");
       return;
@@ -88,15 +94,19 @@ export default function Registration() {
     setAnimateButton(true);
     setStep("yubikey");
     setShowRetryOption(false);
+    setVerificationStatus("pending");
 
     try {
       // Check if browser supports WebAuthn
       if (!window.PublicKeyCredential) {
-        throw new Error("WebAuthn is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari.");
+        throw new Error(
+          "WebAuthn is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari."
+        );
       }
 
       // Check if platform supports authenticators
-      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      const available =
+        await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
       console.log("Platform authenticator available:", available);
 
       const response = await startRegistration(
@@ -107,35 +117,59 @@ export default function Registration() {
       );
 
       if (response.verified || response.success) {
-        setSuccess("Registration successful! Your YubiKey has been registered.");
+        setVerificationStatus("success");
+        setSuccess(
+          "Registration successful! Your YubiKey has been registered."
+        );
+        toast.success("Successfully registered!");
         setStep("form");
-        
+
         // If we get an SSO token, log the user in
         if (response.sso_token || response.token) {
           login(response.sso_token || response.token);
+          // Wait a bit to show the success animation
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          navigate("/");
         }
       } else {
         throw new Error("Registration verification failed");
       }
     } catch (err: any) {
-      if (err.message && err.message.includes("returned more than one RegistrationChallenge")) {
-        setError("Multiple registration attempts detected. This usually happens when previous attempts weren't completed properly.");
+      setVerificationStatus("error");
+      if (
+        err.message &&
+        err.message.includes("returned more than one RegistrationChallenge")
+      ) {
+        setError(
+          "Multiple registration attempts detected. This usually happens when previous attempts weren't completed properly."
+        );
         setShowRetryOption(true);
-      } else if (err.name === 'NotAllowedError') {
-        setError("Registration was cancelled or timed out. Please try again and touch your YubiKey when prompted.");
-      } else if (err.name === 'SecurityError') {
-        setError("Security error occurred. Please ensure you're using HTTPS and try again.");
-      } else if (err.name === 'NotSupportedError') {
-        setError("Your browser or device doesn't support this type of authentication.");
-      } else if (err.name === 'InvalidStateError') {
-        setError("This authenticator is already registered. Please try logging in instead.");
-      } else if (err.name === 'ConstraintError') {
+      } else if (err.name === "NotAllowedError") {
+        setError(
+          "Registration was cancelled or timed out. Please try again and touch your YubiKey when prompted."
+        );
+      } else if (err.name === "SecurityError") {
+        setError(
+          "Security error occurred. Please ensure you're using HTTPS and try again."
+        );
+      } else if (err.name === "NotSupportedError") {
+        setError(
+          "Your browser or device doesn't support this type of authentication."
+        );
+      } else if (err.name === "InvalidStateError") {
+        setError(
+          "This authenticator is already registered. Please try logging in instead."
+        );
+      } else if (err.name === "ConstraintError") {
         setError("The authenticator doesn't meet the security requirements.");
       } else if (err.message && err.message.includes("rawId")) {
-        setError("Authentication device error. Please ensure your YubiKey is properly connected and try again.");
+        setError(
+          "Authentication device error. Please ensure your YubiKey is properly connected and try again."
+        );
       } else {
         setError(err.message || "Registration failed. Please try again.");
       }
+      toast.error(err.message || "Registration failed");
       setStep("form");
       console.error("Registration error:", err);
     } finally {
@@ -193,7 +227,9 @@ export default function Registration() {
       {showRetryOption && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md">
           <div className="flex justify-between items-center">
-            <p className="text-sm">Clear previous registration attempts and try again?</p>
+            <p className="text-sm">
+              Clear previous registration attempts and try again?
+            </p>
             <button
               onClick={handleClearAndRetry}
               disabled={isLoading}
@@ -232,33 +268,59 @@ export default function Registration() {
 
       {step === "yubikey" && isLoading && !showRetryOption && (
         <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-md">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg
-                className="animate-spin h-5 w-5 text-blue-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="font-medium">Please touch your YubiKey</p>
-              <p className="text-sm">Insert your YubiKey and touch the gold contact when it blinks</p>
-            </div>
+          <div className="flex items-center justify-center flex-col">
+            {verificationStatus === "success" ? (
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4">
+                  <svg
+                    className="w-full h-full text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="font-medium text-green-600">Identity Verified!</p>
+                <p className="text-sm text-green-500">
+                  Redirecting to homepage...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-shrink-0 mb-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-dotted rounded-full animate-spin"></div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                      <svg
+                        className="w-8 h-8 text-blue-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium">Verifying your identity</p>
+                  <p className="text-sm">
+                    Please touch your security key when it blinks
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -459,11 +521,12 @@ export default function Registration() {
             </div>
             <div className="ml-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Passwordless authentication using your YubiKey hardware security key
+                Passwordless authentication using your YubiKey hardware security
+                key
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg
