@@ -48,12 +48,17 @@ export default function App() {
     <AuthProvider>
       <Outlet />
       <Toaster
-        position="top-right"
+        position="top-center"
         toastOptions={{
           duration: 3000,
           style: {
             background: "#333",
             color: "#fff",
+            maxWidth: "500px",
+            width: "100%",
+            textAlign: "center",
+            fontSize: "16px",
+            padding: "16px",
           },
           success: {
             iconTheme: {
