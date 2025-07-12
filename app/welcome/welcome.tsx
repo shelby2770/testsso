@@ -1,10 +1,13 @@
 import * as React from "react";
 import { Link } from "react-router";
+import { useAuth } from "../context/AuthContext";
 import logoDark from "./logo-dark.svg";
 import logoLight from "./logo-light.svg";
 
 export function Welcome() {
+  const { isAuthenticated } = useAuth();
   const [activeFeature, setActiveFeature] = React.useState(0);
+  const [showVerified, setShowVerified] = React.useState(false);
 
   // Animation for the hero section
   React.useEffect(() => {
@@ -13,6 +16,17 @@ export function Welcome() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Show verification success if user is authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      // Brief delay to show the verification animation
+      const timer = setTimeout(() => {
+        setShowVerified(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-900 overflow-hidden">
@@ -81,26 +95,64 @@ export function Welcome() {
                               stroke="currentColor"
                               viewBox="0 0 24 24"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
-                              />
+                              {showVerified ? (
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              ) : (
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
+                                />
+                              )}
                             </svg>
                           </div>
                           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                            Authenticate with WebAuthn
+                            {showVerified
+                              ? "Identity Verified"
+                              : "Authenticate with WebAuthn"}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            Use your security key or biometrics
+                            {showVerified
+                              ? "Welcome back!"
+                              : "Use your security key or biometrics"}
                           </p>
                         </div>
                         <div className="relative">
-                          <div className="h-10 w-10 mx-auto border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400 rounded-full animate-spin"></div>
-                          <div className="mt-4 text-center text-sm text-indigo-600 dark:text-indigo-400">
-                            Verifying your identity...
-                          </div>
+                          {showVerified ? (
+                            <div className="flex flex-col items-center space-y-4">
+                              <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center animate-bounce">
+                                <svg
+                                  className="w-8 h-8 text-green-600 dark:text-green-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              </div>
+                              <p className="text-green-600 dark:text-green-400 font-medium">
+                                Successfully authenticated!
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="h-10 w-10 mx-auto border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400 rounded-full animate-spin"></div>
+                              <div className="mt-4 text-center text-sm text-indigo-600 dark:text-indigo-400">
+                                Verifying your identity...
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
