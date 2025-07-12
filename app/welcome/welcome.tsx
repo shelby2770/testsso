@@ -58,20 +58,32 @@ export function Welcome() {
                 Secure, seamless, and simple access across all your applications
                 with FIDO2 WebAuthn technology.
               </p>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center md:justify-start">
-                <Link
-                  to="/register"
-                  className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-                >
-                  Get Started
-                </Link>
-                <Link
-                  to="/login"
-                  className="px-8 py-4 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl shadow-md hover:shadow-lg border border-indigo-100 dark:border-gray-700 transform hover:-translate-y-1 transition-all duration-300"
-                >
-                  Sign In
-                </Link>
-              </div>
+              {!isAuthenticated && (
+                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center md:justify-start">
+                  <Link
+                    to="/register"
+                    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Get Started
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="px-8 py-4 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl shadow-md hover:shadow-lg border border-indigo-100 dark:border-gray-700 transform hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+              {isAuthenticated && (
+                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center md:justify-start">
+                  <Link
+                    to="/profile"
+                    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Go to Profile
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="md:w-1/2 relative">
               <div className="relative w-full h-96">
@@ -249,42 +261,44 @@ export function Welcome() {
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 md:p-12 shadow-2xl">
-            <div className="md:flex items-center justify-between">
-              <div className="mb-6 md:mb-0 md:mr-8">
-                <h2 className="text-3xl font-bold text-white mb-4">
-                  Ready to get started?
-                </h2>
-                <p className="text-indigo-100 text-lg">
-                  Join thousands of organizations using our secure
-                  authentication platform.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <Link
-                  to="/register"
-                  className="px-8 py-4 bg-white text-indigo-600 font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-center"
-                >
-                  Create Account
-                </Link>
-                <Link
-                  to="/login"
-                  className="px-8 py-4 bg-transparent text-white border border-white font-medium rounded-xl hover:bg-white/10 transform hover:-translate-y-1 transition-all duration-300 text-center"
-                >
-                  Sign In
-                </Link>
+        {/* CTA Section - Only show if not authenticated */}
+        {!isAuthenticated && (
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 md:p-12 shadow-2xl">
+              <div className="md:flex items-center justify-between">
+                <div className="mb-6 md:mb-0 md:mr-8">
+                  <h2 className="text-3xl font-bold text-white mb-4">
+                    Ready to get started?
+                  </h2>
+                  <p className="text-indigo-100 text-lg">
+                    Join thousands of organizations using our secure
+                    authentication platform.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                  <Link
+                    to="/register"
+                    className="px-8 py-4 bg-white text-indigo-600 font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-center"
+                  >
+                    Create Account
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="px-8 py-4 bg-transparent text-white border border-white font-medium rounded-xl hover:bg-white/10 transform hover:-translate-y-1 transition-all duration-300 text-center"
+                  >
+                    Sign In
+                  </Link>
+                </div>
               </div>
             </div>
+            <div className="text-center mt-8">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No credit card required • Free trial available • Enterprise
+                support
+              </p>
+            </div>
           </div>
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No credit card required • Free trial available • Enterprise
-              support
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
