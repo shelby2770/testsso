@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
+import toast from "react-hot-toast";
 
 export default function Profile() {
   const { user, logout, ssoToken } = useAuth();
@@ -8,8 +9,10 @@ export default function Profile() {
 
   const handleLogout = () => {
     logout();
-    // Navigate to login page
-    navigate("/login");
+    // Show toast notification
+    toast.success("Logged out successfully!");
+    // Navigate to home page
+    navigate("/");
   };
 
   if (!user) {
