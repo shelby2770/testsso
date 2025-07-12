@@ -1,8 +1,9 @@
 import * as React from "react";
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router";
 
 export default function Profile() {
-  const { user, logout, ssoToken } = useAuth();
+  const { user, ssoToken } = useAuth();
 
   if (!user) {
     return (
@@ -68,12 +69,12 @@ export default function Profile() {
       </div>
 
       <div className="mt-6">
-        <button
-          onClick={logout}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-300"
+        <Link
+          to="/logout"
+          className="block w-full text-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-300"
         >
           Logout
-        </button>
+        </Link>
       </div>
     </div>
   );

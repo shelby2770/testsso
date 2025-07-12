@@ -3,17 +3,20 @@ import { useAuth } from "../context/AuthContext";
 import { redirect } from "react-router";
 import type { Route } from "./+types/logout";
 
-export async function loader() {
+export function loader() {
   return redirect("/");
 }
 
 export default function Logout() {
   const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(true);
 
   React.useEffect(() => {
-    logout();
-    // No need to navigate here as the loader will handle it
-  }, [logout]);
+    if (isLoggingOut) {
+      logout();
+      window.location.href = "/";
+    }
+  }, [logout, isLoggingOut]);
 
-  return null; // This component doesn't render anything
+  return null;
 }
