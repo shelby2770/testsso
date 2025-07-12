@@ -8,11 +8,16 @@ export default function Profile() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
     // Show toast notification
     toast.success("Logged out successfully!");
-    // Navigate to home page
+
+    // Navigate to home page first
     navigate("/");
+
+    // Then logout (this ensures we've already left the profile page before auth state changes)
+    setTimeout(() => {
+      logout();
+    }, 100);
   };
 
   if (!user) {
