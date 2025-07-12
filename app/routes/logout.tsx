@@ -9,14 +9,14 @@ export function loader() {
 
 export default function Logout() {
   const { logout } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = React.useState(true);
 
   React.useEffect(() => {
-    if (isLoggingOut) {
-      logout();
-      window.location.href = "/";
-    }
-  }, [logout, isLoggingOut]);
+    // Call logout to clear auth state
+    logout();
+
+    // Force a complete page refresh to clear all React state
+    window.location.replace("/");
+  }, [logout]);
 
   return null;
 }

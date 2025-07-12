@@ -31,10 +31,10 @@ const setCookie = (name: string, value: string, days: number = 7) => {
 
 const getCookie = (name: string): string | null => {
   const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
+  const ca = document.cookie.split(";");
   for (let i = 0; i < ca.length; i++) {
     let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    while (c.charAt(0) === " ") c = c.substring(1, c.length);
     if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
   }
   return null;
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("sso_token");
       }
     }
-    
+
     console.log("Token from storage:", token);
     if (token) {
       verifyToken(token);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const response = await api.verifyToken(token);
       console.log("Token verification response:", response);
-      
+
       if (response.valid || response.success) {
         setUser(response.user);
         setSsoToken(token);
@@ -102,14 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (!ssoToken) return;
-    
+
     try {
       const response = await api.getUserProfile(ssoToken);
       setUser(response.user || response);
     } catch (error) {
       console.error("Failed to refresh user data:", error);
       // If token is invalid, logout
-      if (error instanceof Error && error.message.includes('401')) {
+      if (error instanceof Error && error.message.includes("401")) {
         logout();
       }
     }
@@ -124,13 +124,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Clear user state
     setUser(null);
     setSsoToken(null);
+
     if (isClient) {
+      // Clear cookies with all possible domains to ensure complete cleanup
       deleteCookie("sso_token");
-      // Also clear localStorage as fallback
+      document.cookie = `sso_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+      document.cookie = `sso_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.asiradnan.com;`;
+      document.cookie = `sso_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=testsso.asiradnan.com;`;
+
+      // Clear any localStorage data
       localStorage.removeItem("sso_token");
+      localStorage.clear(); // Clear all localStorage just to be safe
+
+      // Clear any sessionStorage data
+      sessionStorage.clear();
     }
+
     setIsLoading(false);
   };
 
