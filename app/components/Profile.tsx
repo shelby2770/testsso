@@ -1,8 +1,16 @@
 import * as React from "react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router";
 
 export default function Profile() {
   const { user, logout, ssoToken } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    // Navigate to login page
+    navigate("/login");
+  };
 
   if (!user) {
     return (
@@ -69,7 +77,7 @@ export default function Profile() {
 
       <div className="mt-6">
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-300"
         >
           Logout
